@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JOAT — The Feast</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --beige: #f5f0e8;
+  --beige-mid: #ede5d8;
+  --beige-dark: #d9cfc0;
+  --taupe: #9a8f7e;
+  --taupe-dark: #6b6055;
+  --ink: #2c2820;
+  --accent: #c4a882;
+  --green: #639922;
+  --blue: #185fa5;
+  --red: #a32d2d;
+}
+body { font-family: 'Helvetica Neue', Arial, sans-serif; background: var(--beige); color: var(--ink); min-height: 100vh; font-size: 13px; }
+
+header {
+  background: var(--ink); color: var(--beige);
+  padding: 12px 20px; display: flex; align-items: center; gap: 14px;
+  position: sticky; top: 0; z-index: 50; flex-wrap: wrap;
+}
+header h1 { font-size: 12px; font-weight: 500; letter-spacing: 0.14em; text-transform: uppercase; white-space: nowrap; }
+.sep { opacity: 0.3; }
+.tabs { display: flex; gap: 2px; background: rgba(255,255,255,0.1); border-radius: 6px; padding: 3px; }
+.tab-btn {
+  background: transparent; border: none; color: rgba(245,240,232,0.55);
+  padding: 4px 12px; border-radius: 4px; font-size: 11px; cursor: pointer;
+  letter-spacing: 0.05em; font-family: inherit; transition: all 0.15s; white-space: nowrap;
+}
+.tab-btn.active { background: var(--beige); color: var(--ink); font-weight: 500; }
+.header-stats { display: flex; gap: 16px; font-size: 11px; opacity: 0.65; }
+.header-stats b { font-weight: 500; opacity: 1; }
+.sync-status {
+  font-size: 10px; padding: 3px 9px; border-radius: 20px; white-space: nowrap;
+  display: flex; align-items: center; gap: 5px;
+}
+.sync-dot { width: 6px; height: 6px; border-radius: 50%; }
+.sync-ok { background: rgba(99,153,34,0.2); color: #a3d46a; }
+.sync-ok .sync-dot { background: #a3d46a; }
+.sync-loading { background: rgba(196,168,130,0.2); color: var(--accent); }
+.sync-loading .sync-dot { background: var(--accent); animation: pulse 1s infinite; }
+.sync-err { background: rgba(163,45,45,0.2); color: #f87171; }
+.sync-err .sync-dot { background: #f87171; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+.header-actions { display: flex; gap: 6px; margin-left: auto; }
+.btn-h {
+  background: rgba(255,255,255,0.1); border: none; color: var(--beige);
+  padding: 5px 11px; border-radius: 4px; font-size: 11px; cursor: pointer; font-family: inherit;
+}
+.btn-h:hover { background: rgba(255,255,255,0.2); }
+.btn-h.accent { background: var(--accent); color: var(--ink); font-weight: 500; }
+.btn-h.accent:hover { opacity: 0.88; }
+
+.view { display: none; padding: 18px 20px; }
+.view.active { display: block; }
+
+/* GRID */
+.sb-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 12px; }
+.sb-card {
+  background: #fff; border: 0.5px solid var(--beige-dark); border-radius: 10px;
+  overflow: hidden; cursor: grab; transition: box-shadow 0.15s, opacity 0.15s;
+}
+.sb-card:hover { box-shadow: 0 3px 14px rgba(44,40,32,0.09); }
+.sb-card.dragging { opacity: 0.3; }
+.sb-card.drag-over { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
+.sb-img { width: 100%; height: 128px; background: var(--beige-mid); display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative; cursor: pointer; }
+.sb-img img { width: 100%; height: 100%; object-fit: cover; }
+.sb-img-ph { font-size: 10px; color: var(--taupe); text-align: center; line-height: 1.7; }
+.sb-img input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.sb-num { position: absolute; top: 7px; left: 7px; background: var(--ink); color: var(--beige); font-size: 9px; font-weight: 500; padding: 2px 7px; border-radius: 20px; }
+.sb-body { padding: 9px 11px 11px; }
+.sb-desc { font-size: 11px; color: var(--ink); line-height: 1.5; margin-bottom: 7px; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.sb-meta { display: flex; gap: 4px; flex-wrap: wrap; align-items: center; margin-bottom: 8px; }
+.badge { display: inline-block; font-size: 9px; padding: 2px 6px; border-radius: 20px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.04em; }
+.badge-a { background: var(--beige-dark); color: var(--taupe-dark); }
+.badge-b { background: #dbeafe; color: #1e40af; }
+.badge-g { background: var(--beige-mid); color: var(--taupe-dark); }
+.badge-fps { background: #f0fdf4; color: #166534; }
+.status-dot { width: 6px; height: 6px; border-radius: 50%; margin-left: auto; }
+.dot-at { background: var(--taupe); }
+.dot-ok { background: var(--green); }
+.dot-rt { background: var(--red); }
+.sb-foot { display: flex; gap: 5px; }
+.btn-ic { background: var(--beige); border: 0.5px solid var(--beige-dark); border-radius: 4px; padding: 3px 8px; font-size: 10px; cursor: pointer; color: var(--taupe-dark); font-family: inherit; }
+.btn-ic:hover { background: var(--beige-mid); }
+.btn-ic.del:hover { color: var(--red); border-color: #fca5a5; }
+.custom-badges { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 4px; }
+.custom-val-badge { font-size: 9px; padding: 1px 6px; border-radius: 20px; background: #f3e8ff; color: #6b21a8; font-weight: 500; }
+
+/* TABLE */
+.sb-table-wrap { overflow-x: auto; }
+.sb-table { width: 100%; border-collapse: collapse; min-width: 700px; }
+.sb-table th { background: var(--beige-mid); font-size: 10px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.07em; color: var(--taupe-dark); padding: 8px 10px; text-align: left; border-bottom: 1px solid var(--beige-dark); white-space: nowrap; }
+.sb-table td { padding: 7px 10px; border-bottom: 0.5px solid var(--beige-mid); vertical-align: middle; }
+.sb-table tr { cursor: grab; }
+.sb-table tr.dragging { opacity: 0.3; }
+.sb-table tr.drag-over td { background: #fdf6ec; border-top: 2px solid var(--accent); }
+.sb-table tr:hover td { background: #fdfaf6; }
+.tb-thumb { width: 72px; height: 44px; object-fit: cover; border-radius: 4px; display: block; cursor: pointer; }
+.tb-thumb-empty { width: 72px; height: 44px; border-radius: 4px; background: var(--beige-mid); border: 0.5px dashed var(--beige-dark); display: flex; align-items: center; justify-content: center; font-size: 9px; color: var(--taupe); position: relative; cursor: pointer; }
+.tb-thumb-empty input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.tb-num { font-weight: 500; color: var(--taupe); text-align: center; font-size: 12px; }
+.tb-desc { font-size: 11px; line-height: 1.4; max-width: 300px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.grip { color: var(--beige-dark); font-size: 13px; cursor: grab; }
+
+/* SHOT LIST */
+.sl-toolbar { display: flex; gap: 7px; margin-bottom: 12px; align-items: center; flex-wrap: wrap; }
+.sl-search, .sl-filter { background: #fff; border: 0.5px solid var(--beige-dark); border-radius: 6px; padding: 5px 10px; font-size: 11px; color: var(--ink); font-family: inherit; outline: none; }
+.sl-search { width: 160px; }
+.sl-search:focus, .sl-filter:focus { border-color: var(--accent); }
+.sl-label { font-size: 11px; color: var(--taupe); margin-left: auto; }
+.sl-table-wrap { overflow-x: auto; }
+.sl-table { width: 100%; border-collapse: collapse; }
+.sl-table th { background: var(--beige-mid); font-size: 10px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.07em; color: var(--taupe-dark); padding: 8px 10px; text-align: left; border-bottom: 1px solid var(--beige-dark); white-space: nowrap; }
+.sl-table td { padding: 7px 10px; border-bottom: 0.5px solid var(--beige-mid); vertical-align: middle; font-size: 12px; }
+.sl-table tr { cursor: grab; }
+.sl-table tr.dragging { opacity: 0.3; }
+.sl-table tr.drag-over td { background: #fdf6ec; border-top: 2px solid var(--accent); }
+.sl-table tr:hover td { background: #fdfaf6; }
+.sl-thumb { width: 56px; height: 36px; border-radius: 4px; object-fit: cover; display: block; }
+.sl-thumb-empty { width: 56px; height: 36px; border-radius: 4px; background: var(--beige-mid); border: 0.5px dashed var(--beige-dark); display: flex; align-items: center; justify-content: center; font-size: 9px; color: var(--taupe); position: relative; }
+.sl-thumb-empty input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.sl-num { font-weight: 500; color: var(--taupe); text-align: center; }
+.sl-desc { max-width: 260px; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.cell-e { background: transparent; border: none; font-size: 12px; color: var(--ink); font-family: inherit; outline: none; padding: 1px 2px; width: 100%; border-bottom: 1px solid transparent; }
+.cell-e:focus { border-bottom-color: var(--accent); }
+.status-pill { font-size: 9px; padding: 2px 7px; border-radius: 20px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.04em; white-space: nowrap; }
+.sp-at { background: var(--beige-mid); color: var(--taupe-dark); }
+.sp-ok { background: #f0fdf4; color: #166534; }
+.sp-rt { background: #fef2f2; color: var(--red); }
+.del-btn { background: none; border: none; color: var(--beige-dark); cursor: pointer; font-size: 12px; }
+.del-btn:hover { color: var(--red); }
+
+/* MODAL */
+.mo { display: none; position: fixed; inset: 0; background: rgba(44,40,32,0.5); align-items: center; justify-content: center; z-index: 200; }
+.mo.open { display: flex; }
+.mo-box { background: #fff; border-radius: 12px; padding: 22px; width: 480px; max-height: 92vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(44,40,32,0.2); }
+.mo-box h3 { font-size: 14px; font-weight: 500; margin-bottom: 14px; }
+.mo-img { width: 100%; height: 150px; background: var(--beige); border: 1px dashed var(--beige-dark); border-radius: 8px; display: flex; align-items: center; justify-content: center; overflow: hidden; cursor: pointer; position: relative; margin-bottom: 13px; }
+.mo-img img { width: 100%; height: 100%; object-fit: cover; }
+.mo-img input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.mo-img-ph { font-size: 11px; color: var(--taupe); }
+.fg { margin-bottom: 11px; }
+.fl { font-size: 10px; color: var(--taupe); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 3px; }
+.fi { width: 100%; padding: 7px 9px; border: 0.5px solid var(--beige-dark); border-radius: 6px; font-size: 12px; background: var(--beige); color: var(--ink); font-family: inherit; outline: none; }
+.fi:focus { border-color: var(--accent); }
+.fgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+.mo-actions { display: flex; gap: 7px; margin-top: 14px; }
+.btn-save { flex: 1; background: var(--ink); color: var(--beige); border: none; padding: 9px; border-radius: 6px; font-size: 12px; cursor: pointer; font-family: inherit; }
+.btn-save:hover { opacity: 0.85; }
+.btn-cancel { background: transparent; color: var(--taupe-dark); border: 0.5px solid var(--beige-dark); padding: 9px 14px; border-radius: 6px; font-size: 12px; cursor: pointer; font-family: inherit; }
+.btn-cancel:hover { background: var(--beige); }
+
+/* COL MODAL */
+.cc-list { display: flex; flex-direction: column; gap: 7px; margin-bottom: 12px; }
+.cc-item { display: flex; align-items: center; gap: 8px; background: var(--beige); border-radius: 6px; padding: 7px 10px; border: 0.5px solid var(--beige-dark); }
+.cc-item span { flex: 1; font-size: 12px; }
+.cc-item .cc-type { font-size: 10px; color: var(--taupe); }
+.cc-del { background: none; border: none; color: var(--taupe); cursor: pointer; font-size: 13px; }
+.cc-del:hover { color: var(--red); }
+.cc-add-row { display: flex; gap: 7px; align-items: center; }
+.cc-add-row input, .cc-add-row select { flex: 1; padding: 6px 9px; border: 0.5px solid var(--beige-dark); border-radius: 6px; font-size: 12px; background: #fff; color: var(--ink); font-family: inherit; outline: none; }
+.btn-add-col { background: var(--ink); color: var(--beige); border: none; padding: 6px 12px; border-radius: 6px; font-size: 11px; cursor: pointer; font-family: inherit; white-space: nowrap; }
+.btn-add-col:hover { opacity: 0.85; }
+.empty-st { text-align: center; padding: 3rem; color: var(--taupe); font-size: 12px; }
+
+/* LOADING SCREEN */
+#loading-screen {
+  position: fixed; inset: 0; background: var(--beige);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 999;
+  gap: 16px;
+}
+#loading-screen h2 { font-size: 13px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink); }
+#loading-screen p { font-size: 11px; color: var(--taupe); }
+.spinner { width: 28px; height: 28px; border: 2px solid var(--beige-dark); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<div id="loading-screen">
+  <div class="spinner"></div>
+  <h2>JOAT — The Feast</h2>
+  <p id="loading-msg">Connexion à Notion...</p>
+</div>
+
+<header>
+  <h1>JOAT <span class="sep">|</span> The Feast</h1>
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchView('grid')">Storyboard</button>
+    <button class="tab-btn" onclick="switchView('table')">Tableau</button>
+    <button class="tab-btn" onclick="switchView('shotlist')">Shot List</button>
+  </div>
+  <div class="header-stats">
+    <div>Plans&nbsp;: <b id="h-total">0</b></div>
+    <div>Tournés&nbsp;: <b id="h-done">0</b></div>
+    <div>Durée&nbsp;: <b id="h-dur">—</b></div>
+  </div>
+  <div id="sync-indicator" class="sync-status sync-ok"><span class="sync-dot"></span>Sync Notion</div>
+  <div class="header-actions">
+    <button class="btn-h" onclick="openColModal()">+ Colonne</button>
+    <button class="btn-h" onclick="exportCSV()">Export CSV</button>
+    <button class="btn-h accent" onclick="openModal(null)">+ Plan</button>
+  </div>
+</header>
+
+<div class="view active" id="view-grid">
+  <div class="sb-grid" id="sb-grid"></div>
+</div>
+
+<div class="view" id="view-table">
+  <div class="sb-table-wrap">
+    <table class="sb-table"><thead><tr id="tb-head"></tr></thead><tbody id="tb-body"></tbody></table>
+  </div>
+</div>
+
+<div class="view" id="view-shotlist">
+  <div class="sl-toolbar">
+    <input class="sl-search" id="sl-search" type="text" placeholder="Rechercher..." oninput="renderShotList()">
+    <select class="sl-filter" id="f-tags" onchange="renderShotList()">
+      <option value="">Tags</option>
+      <option value="A-Roll">A-Roll</option>
+      <option value="B-Roll">B-Roll</option>
+    </select>
+    <select class="sl-filter" id="f-status" onchange="renderShotList()">
+      <option value="">Statut</option>
+      <option value="A tourner">A tourner</option>
+      <option value="Tourné">Tourné</option>
+      <option value="Retake">Retake</option>
+    </select>
+    <select class="sl-filter" id="f-shot" onchange="renderShotList()">
+      <option value="">Shot</option>
+      <option value="Wide">Wide</option>
+      <option value="Medium">Medium</option>
+      <option value="Close">Close</option>
+      <option value="Macro">Macro</option>
+    </select>
+    <div class="sl-label">Ordre de tournage — indépendant du storyboard</div>
+  </div>
+  <div class="sl-table-wrap">
+    <table class="sl-table"><thead><tr id="sl-head"></tr></thead><tbody id="sl-body"></tbody></table>
+  </div>
+</div>
+
+<!-- EDIT MODAL -->
+<div class="mo" id="mo-edit">
+  <div class="mo-box">
+    <h3 id="mo-title">Nouveau plan</h3>
+    <div class="mo-img" id="mo-img">
+      <span class="mo-img-ph">+ Ajouter une image</span>
+      <input type="file" accept="image/*" onchange="handleModalImg(event)">
+    </div>
+    <div class="fg"><div class="fl">Description</div><textarea class="fi" id="f-desc" rows="3"></textarea></div>
+    <div class="fgrid">
+      <div class="fg"><div class="fl">Tags</div><select class="fi" id="f-tags2"><option value="A-Roll">A-Roll</option><option value="B-Roll">B-Roll</option></select></div>
+      <div class="fg"><div class="fl">Shot</div><select class="fi" id="f-shot2"><option value="">--</option><option value="Wide">Wide</option><option value="Medium">Medium</option><option value="Close">Close</option><option value="Macro">Macro</option><option value="OTS">OTS</option><option value="POV">POV</option><option value="Cutaway">Cutaway</option></select></div>
+      <div class="fg"><div class="fl">FPS</div><select class="fi" id="f-fps2"><option value="24">24</option><option value="25" selected>25</option><option value="30">30</option><option value="50">50</option><option value="60">60</option><option value="120">120</option></select></div>
+      <div class="fg"><div class="fl">Durée est. (sec)</div><input class="fi" id="f-dur2" type="number" min="0" placeholder="5"></div>
+      <div class="fg"><div class="fl">Personnages</div><input class="fi" id="f-chars2" placeholder="P1, P2..."></div>
+      <div class="fg"><div class="fl">Lieu</div><input class="fi" id="f-loc2" placeholder="Pantoufle..."></div>
+    </div>
+    <div class="fg"><div class="fl">Commentaires</div><textarea class="fi" id="f-notes2" rows="2"></textarea></div>
+    <div id="mo-custom-fields"></div>
+    <div class="mo-actions">
+      <button class="btn-cancel" onclick="closeModal()">Annuler</button>
+      <button class="btn-save" onclick="saveShot()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- COLUMNS MODAL -->
+<div class="mo" id="mo-cols">
+  <div class="mo-box">
+    <h3>Gérer les colonnes</h3>
+    <div class="cc-list" id="cc-list"></div>
+    <div class="fl" style="margin-bottom:8px">Ajouter une colonne</div>
+    <div class="cc-add-row">
+      <input id="cc-name" placeholder="Nom (ex: Props, Important...)" maxlength="30">
+      <select id="cc-type"><option value="text">Texte</option><option value="checkbox">Case à cocher</option></select>
+      <button class="btn-add-col" onclick="addCustomCol()">Ajouter</button>
+    </div>
+    <div class="mo-actions">
+      <button class="btn-save" onclick="document.getElementById('mo-cols').classList.remove('open');renderAll()">Fermer</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const NOTION_TOKEN = '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';
+const NOTION_DB = '7f3510fcb5378315a0e88175c0bd094c';
+const NOTION_V = '2022-06-28';
+const NOTION_HEADERS = {
+  'Authorization': 'Bearer ' + NOTION_TOKEN,
+  'Notion-Version': NOTION_V,
+  'Content-Type': 'application/json'
+};
+
+let shots = [];
+let customCols = JSON.parse(localStorage.getItem('joat-custom-cols') || '[]');
+let currentView = 'grid';
+let editingId = null;
+let modalImg = null;
+let dragSrcId = null;
+let saveTimers = {};
+
+function uid() { return Date.now().toString(36)+Math.random().toString(36).slice(2); }
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;');}
+
+function setSyncStatus(state, msg) {
+  const el = document.getElementById('sync-indicator');
+  el.className = 'sync-status sync-'+state;
+  el.innerHTML = '<span class="sync-dot"></span>'+msg;
+}
+
+// ---- NOTION MAPPING ----
+function notionPageToShot(page, idx) {
+  const p = page.properties;
+  const getText = key => p[key]?.rich_text?.[0]?.plain_text || p[key]?.title?.[0]?.plain_text || '';
+  const getSelect = key => p[key]?.select?.name || '';
+  const getNumber = key => p[key]?.number ?? null;
+
+  return {
+    id: uid(),
+    notionId: page.id,
+    sbOrder: getNumber('SBOrder') ?? idx,
+    slOrder: getNumber('SLOrder') ?? idx,
+    desc: getText('Description') || getText('Name'),
+    tags: getSelect('Tags') || 'A-Roll',
+    shot: getSelect('Shot') || '',
+    fps: getText('FPS') || '25',
+    dur: getText('Duration') || '',
+    chars: getText('Characters') || '',
+    loc: getText('Location') || 'Pantoufle',
+    notes: getText('Comments') || '',
+    status: getSelect('Status') || 'A tourner',
+    img: null,
+    custom: {}
+  };
+}
+
+function shotToNotionProps(s) {
+  return {
+    "Description": { rich_text: [{ text: { content: s.desc || '' } }] },
+    "Tags": { select: { name: s.tags || 'A-Roll' } },
+    "Shot": s.shot ? { select: { name: s.shot } } : { select: null },
+    "FPS": { rich_text: [{ text: { content: s.fps || '25' } }] },
+    "Duration": { rich_text: [{ text: { content: String(s.dur || '') } }] },
+    "Characters": { rich_text: [{ text: { content: s.chars || '' } }] },
+    "Location": { rich_text: [{ text: { content: s.loc || '' } }] },
+    "Comments": { rich_text: [{ text: { content: s.notes || '' } }] },
+    "Status": { select: { name: s.status || 'A tourner' } },
+    "SBOrder": { number: s.sbOrder },
+    "SLOrder": { number: s.slOrder }
+  };
+}
+
+// ---- API CALLS ----
+async function notionQuery() {
+  const res = await fetch('https://api.notion.com/v1/databases/'+NOTION_DB+'/query', {
+    method: 'POST', headers: NOTION_HEADERS,
+    body: JSON.stringify({ sorts: [{ property: 'SBOrder', direction: 'ascending' }] })
+  });
+  if (!res.ok) throw new Error('Query failed: '+res.status);
+  return res.json();
+}
+
+async function notionCreate(s) {
+  const res = await fetch('https://api.notion.com/v1/pages', {
+    method: 'POST', headers: NOTION_HEADERS,
+    body: JSON.stringify({ parent: { database_id: NOTION_DB }, properties: shotToNotionProps(s) })
+  });
+  if (!res.ok) throw new Error('Create failed');
+  return res.json();
+}
+
+async function notionUpdate(notionId, props) {
+  const res = await fetch('https://api.notion.com/v1/pages/'+notionId, {
+    method: 'PATCH', headers: NOTION_HEADERS,
+    body: JSON.stringify({ properties: props })
+  });
+  if (!res.ok) throw new Error('Update failed');
+  return res.json();
+}
+
+async function notionDelete(notionId) {
+  await fetch('https://api.notion.com/v1/pages/'+notionId, {
+    method: 'PATCH', headers: NOTION_HEADERS,
+    body: JSON.stringify({ archived: true })
+  });
+}
+
+function debounceSave(id, fn, delay = 1200) {
+  clearTimeout(saveTimers[id]);
+  saveTimers[id] = setTimeout(fn, delay);
+}
+
+// ---- LOAD FROM NOTION ----
+async function loadFromNotion() {
+  setSyncStatus('loading', 'Chargement...');
+  document.getElementById('loading-msg').textContent = 'Chargement depuis Notion...';
+  try {
+    const data = await notionQuery();
+    if (data.results && data.results.length > 0) {
+      shots = data.results.map((page, i) => notionPageToShot(page, i));
+      shots.sort((a,b) => a.sbOrder - b.sbOrder);
+    } else {
+      shots = [];
+    }
+    setSyncStatus('ok', 'Sync Notion');
+    document.getElementById('loading-screen').style.display = 'none';
+    renderAll();
+    updateHeader();
+  } catch(e) {
+    setSyncStatus('err', 'Erreur Notion');
+    document.getElementById('loading-msg').textContent = 'Erreur de connexion à Notion. Vérifier la configuration.';
+    console.error(e);
+  }
+}
+
+// ---- VIEWS ----
+function switchView(v) {
+  currentView = v;
+  ['grid','table','shotlist'].forEach(x => document.getElementById('view-'+x).classList.toggle('active', x===v));
+  document.querySelectorAll('.tab-btn').forEach((b,i) => b.classList.toggle('active', ['grid','table','shotlist'][i]===v));
+  renderAll();
+}
+
+function renderAll() {
+  if (currentView==='grid') renderGrid();
+  else if (currentView==='table') renderTable();
+  else renderShotList();
+  updateHeader();
+}
+
+// ---- GRID ----
+function renderGrid() {
+  const grid = document.getElementById('sb-grid');
+  const sorted = [...shots].sort((a,b)=>a.sbOrder-b.sbOrder);
+  grid.innerHTML = '';
+  if (!sorted.length) { grid.innerHTML='<div class="empty-st">Aucun plan. Clique sur "+ Plan" pour commencer.</div>'; return; }
+  sorted.forEach((s,i) => {
+    const card = document.createElement('div');
+    card.className = 'sb-card'; card.draggable = true; card.dataset.id = s.id;
+    const tagCls = s.tags==='B-Roll'?'badge-b':'badge-a';
+    const dotCls = s.status==='Tourné'?'dot-ok':s.status==='Retake'?'dot-rt':'dot-at';
+    const customHtml = customCols.map(c => {
+      const val = s.custom[c.id];
+      if (!val && val!==true) return '';
+      return c.type==='checkbox' ? (val?'<span class="custom-val-badge">'+c.name+'</span>':'') : (val?'<span class="custom-val-badge">'+c.name+': '+val+'</span>':'');
+    }).join('');
+    card.innerHTML = `
+      <div class="sb-img">
+        <span class="sb-num">${i+1}</span>
+        ${s.img?'<img src="'+s.img+'">':'<div class="sb-img-ph">+ image<br><small style="opacity:.6">cliquer</small></div>'}
+        <input type="file" accept="image/*" onchange="handleCardImg(event,'${s.id}')">
+      </div>
+      <div class="sb-body">
+        <div class="sb-desc">${s.desc||'<span style="color:var(--taupe)">Sans description</span>'}</div>
+        <div class="sb-meta">
+          ${s.tags?'<span class="badge '+tagCls+'">'+s.tags+'</span>':''}
+          ${s.shot?'<span class="badge badge-g">'+s.shot+'</span>':''}
+          ${s.fps?'<span class="badge badge-fps">'+s.fps+'fps</span>':''}
+          <span class="status-dot ${dotCls}" title="${s.status}" style="margin-left:auto"></span>
+        </div>
+        ${customHtml?'<div class="custom-badges">'+customHtml+'</div>':''}
+        <div class="sb-foot">
+          <button class="btn-ic" onclick="openModal('${s.id}')">Modifier</button>
+          <button class="btn-ic del" onclick="deleteShot('${s.id}')">Suppr.</button>
+        </div>
+      </div>`;
+    card.addEventListener('dragstart', e=>{dragSrcId=s.id;card.classList.add('dragging');e.dataTransfer.effectAllowed='move';});
+    card.addEventListener('dragend', ()=>card.classList.remove('dragging'));
+    card.addEventListener('dragover', e=>{e.preventDefault();card.classList.add('drag-over');});
+    card.addEventListener('dragleave', ()=>card.classList.remove('drag-over'));
+    card.addEventListener('drop', e=>{
+      e.preventDefault();card.classList.remove('drag-over');
+      if(!dragSrcId||dragSrcId===s.id)return;
+      const src=shots.find(x=>x.id===dragSrcId),tgt=shots.find(x=>x.id===s.id);
+      const tmp=src.sbOrder;src.sbOrder=tgt.sbOrder;tgt.sbOrder=tmp;
+      dragSrcId=null;renderGrid();updateHeader();
+      setSyncStatus('loading','Sauvegarde...');
+      debounceSave('sb-reorder',async()=>{
+        try {
+          await Promise.all([src,tgt].filter(x=>x.notionId).map(x=>notionUpdate(x.notionId,{'SBOrder':{number:x.sbOrder}})));
+          setSyncStatus('ok','Sync Notion');
+        } catch(e){setSyncStatus('err','Erreur sync');}
+      });
+    });
+    grid.appendChild(card);
+  });
+}
+
+function handleCardImg(e,id) {
+  const f=e.target.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=ev=>{shots.find(x=>x.id===id).img=ev.target.result;renderGrid();};
+  r.readAsDataURL(f);
+}
+
+// ---- TABLE ----
+function renderTable() {
+  const sorted=[...shots].sort((a,b)=>a.sbOrder-b.sbOrder);
+  const head=document.getElementById('tb-head');
+  const body=document.getElementById('tb-body');
+  head.innerHTML=['','#','Image','Description','Tags','Shot','FPS','Personnages','Lieu','Statut'].map(c=>'<th>'+c+'</th>').join('')+customCols.map(c=>'<th>'+c.name+'</th>').join('')+'<th></th>';
+  body.innerHTML='';
+  sorted.forEach((s,i)=>{
+    const tr=document.createElement('tr');tr.draggable=true;tr.dataset.id=s.id;
+    const spCls=s.status==='Tourné'?'sp-ok':s.status==='Retake'?'sp-rt':'sp-at';
+    const tagCls=s.tags==='B-Roll'?'badge-b':'badge-a';
+    const customCells=customCols.map(c=>{
+      const val=s.custom[c.id]||'';
+      return c.type==='checkbox'?'<td style="text-align:center"><input type="checkbox" '+(val?'checked':'')+' onchange="updateCustom(\''+s.id+'\',\''+c.id+'\',this.checked)"></td>':'<td><input class="cell-e" value="'+esc(val)+'" style="min-width:60px" onchange="updateCustom(\''+s.id+'\',\''+c.id+'\',this.value)"></td>';
+    }).join('');
+    tr.innerHTML=`
+      <td><span class="grip">&#8597;</span></td>
+      <td class="tb-num">${i+1}</td>
+      <td>${s.img?'<img class="tb-thumb" src="'+s.img+'" onclick="openModal(\''+s.id+'\')">':'<div class="tb-thumb-empty">+img<input type="file" accept="image/*" onchange="handleTbImg(event,\''+s.id+'\')"></div>'}</td>
+      <td class="tb-desc">${s.desc}</td>
+      <td><span class="badge ${tagCls}">${s.tags}</span></td>
+      <td>${s.shot||'—'}</td><td>${s.fps}</td>
+      <td style="font-size:11px">${s.chars||'—'}</td>
+      <td style="font-size:11px">${s.loc||'—'}</td>
+      <td><span class="status-pill ${spCls}">${s.status}</span></td>
+      ${customCells}
+      <td><button class="btn-ic" onclick="openModal('${s.id}')" style="font-size:10px">✏️</button> <button class="del-btn" onclick="deleteShot('${s.id}')">✕</button></td>`;
+    tr.addEventListener('dragstart',e=>{dragSrcId=s.id;tr.classList.add('dragging');e.dataTransfer.effectAllowed='move';});
+    tr.addEventListener('dragend',()=>tr.classList.remove('dragging'));
+    tr.addEventListener('dragover',e=>{e.preventDefault();tr.classList.add('drag-over');});
+    tr.addEventListener('dragleave',()=>tr.classList.remove('drag-over'));
+    tr.addEventListener('drop',e=>{
+      e.preventDefault();tr.classList.remove('drag-over');
+      if(!dragSrcId||dragSrcId===s.id)return;
+      const allS=[...shots].sort((a,b)=>a.sbOrder-b.sbOrder);
+      const si=allS.findIndex(x=>x.id===dragSrcId),ti=allS.findIndex(x=>x.id===s.id);
+      const[mv]=allS.splice(si,1);allS.splice(ti,0,mv);allS.forEach((x,idx)=>x.sbOrder=idx);
+      dragSrcId=null;renderTable();updateHeader();
+      syncReorder('sbOrder',allS);
+    });
+    body.appendChild(tr);
+  });
+}
+
+function handleTbImg(e,id){const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>{shots.find(x=>x.id===id).img=ev.target.result;renderTable();};r.readAsDataURL(f);}
+
+// ---- SHOT LIST ----
+function renderShotList() {
+  const search=document.getElementById('sl-search')?.value.toLowerCase()||'';
+  const ft=document.getElementById('f-tags')?.value||'',fs=document.getElementById('f-status')?.value||'',fsh=document.getElementById('f-shot')?.value||'';
+  let list=[...shots].sort((a,b)=>a.slOrder-b.slOrder);
+  if(search)list=list.filter(s=>s.desc.toLowerCase().includes(search)||(s.chars||'').toLowerCase().includes(search));
+  if(ft)list=list.filter(s=>s.tags===ft);if(fs)list=list.filter(s=>s.status===fs);if(fsh)list=list.filter(s=>s.shot===fsh);
+  const head=document.getElementById('sl-head'),body=document.getElementById('sl-body');
+  head.innerHTML=['','#','Image','Description','Shot','FPS','Durée','Personnages','Lieu','Statut'].map(c=>'<th>'+c+'</th>').join('')+customCols.map(c=>'<th>'+c.name+'</th>').join('')+'<th></th>';
+  body.innerHTML='';
+  list.forEach((s,i)=>{
+    const tr=document.createElement('tr');tr.draggable=true;tr.dataset.id=s.id;
+    const spCls=s.status==='Tourné'?'sp-ok':s.status==='Retake'?'sp-rt':'sp-at';
+    const customCells=customCols.map(c=>{const val=s.custom[c.id]||'';return c.type==='checkbox'?'<td style="text-align:center"><input type="checkbox" '+(val?'checked':'')+' onchange="updateCustomAndSync(\''+s.id+'\',\''+c.id+'\',this.checked)"></td>':'<td><input class="cell-e" value="'+esc(val)+'" style="min-width:60px" onchange="updateCustomAndSync(\''+s.id+'\',\''+c.id+'\',this.value)"></td>';}).join('');
+    tr.innerHTML=`
+      <td><span class="grip">&#8597;</span></td>
+      <td class="sl-num">${i+1}</td>
+      <td>${s.img?'<img class="sl-thumb" src="'+s.img+'">':`<div class="sl-thumb-empty">+img<input type="file" accept="image/*" onchange="handleSlImg(event,'${s.id}')"></div>`}</td>
+      <td class="sl-desc">${s.desc}</td>
+      <td><select class="cell-e" onchange="updateFieldAndSync('${s.id}','shot',this.value)">${['','Wide','Medium','Close','Macro','OTS','POV','Cutaway'].map(v=>'<option value="'+v+'"'+(s.shot===v?' selected':'')+'>'+v+'</option>').join('')}</select></td>
+      <td><select class="cell-e" onchange="updateFieldAndSync('${s.id}','fps',this.value)">${['24','25','30','50','60','120'].map(v=>'<option value="'+v+'"'+(s.fps===v?' selected':'')+'>'+v+'</option>').join('')}</select></td>
+      <td><input class="cell-e" type="number" value="${s.dur||''}" placeholder="sec" style="width:44px" onchange="updateFieldAndSync('${s.id}','dur',this.value)"></td>
+      <td><input class="cell-e" value="${esc(s.chars||'')}" style="min-width:70px" onchange="updateFieldAndSync('${s.id}','chars',this.value)"></td>
+      <td><input class="cell-e" value="${esc(s.loc||'')}" style="min-width:70px" onchange="updateFieldAndSync('${s.id}','loc',this.value)"></td>
+      <td><select class="cell-e" onchange="updateFieldAndSync('${s.id}','status',this.value)">${['A tourner','Tourné','Retake'].map(v=>'<option value="'+v+'"'+(s.status===v?' selected':'')+'>'+v+'</option>').join('')}</select></td>
+      ${customCells}
+      <td><button class="del-btn" onclick="deleteShot('${s.id}')">✕</button></td>`;
+    tr.addEventListener('dragstart',e=>{dragSrcId=s.id;tr.classList.add('dragging');e.dataTransfer.effectAllowed='move';});
+    tr.addEventListener('dragend',()=>tr.classList.remove('dragging'));
+    tr.addEventListener('dragover',e=>{e.preventDefault();tr.classList.add('drag-over');});
+    tr.addEventListener('dragleave',()=>tr.classList.remove('drag-over'));
+    tr.addEventListener('drop',e=>{
+      e.preventDefault();tr.classList.remove('drag-over');
+      if(!dragSrcId||dragSrcId===s.id)return;
+      const allS=[...shots].sort((a,b)=>a.slOrder-b.slOrder);
+      const si=allS.findIndex(x=>x.id===dragSrcId),ti=allS.findIndex(x=>x.id===s.id);
+      const[mv]=allS.splice(si,1);allS.splice(ti,0,mv);allS.forEach((x,idx)=>x.slOrder=idx);
+      dragSrcId=null;renderShotList();updateHeader();
+      syncReorder('slOrder',allS);
+    });
+    body.appendChild(tr);
+  });
+}
+
+function handleSlImg(e,id){const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>{shots.find(x=>x.id===id).img=ev.target.result;renderShotList();};r.readAsDataURL(f);}
+
+async function syncReorder(field,list) {
+  setSyncStatus('loading','Sauvegarde...');
+  try {
+    await Promise.all(list.filter(x=>x.notionId).map(x=>notionUpdate(x.notionId,{[field==='sbOrder'?'SBOrder':'SLOrder']:{number:x[field]}})));
+    setSyncStatus('ok','Sync Notion');
+  } catch(e){setSyncStatus('err','Erreur sync');}
+}
+
+// ---- UPDATE + SYNC ----
+function updateFieldAndSync(id,field,val) {
+  const s=shots.find(x=>x.id===id);if(!s)return;
+  s[field]=val;updateHeader();
+  if(!s.notionId)return;
+  setSyncStatus('loading','Sauvegarde...');
+  debounceSave('field-'+id+field,async()=>{
+    try{await notionUpdate(s.notionId,shotToNotionProps(s));setSyncStatus('ok','Sync Notion');}
+    catch(e){setSyncStatus('err','Erreur sync');}
+  });
+}
+
+function updateCustomAndSync(shotId,colId,val) {
+  const s=shots.find(x=>x.id===shotId);if(!s)return;
+  s.custom[colId]=val;
+}
+
+function updateCustom(shotId,colId,val){const s=shots.find(x=>x.id===shotId);if(s)s.custom[colId]=val;}
+
+// ---- MODAL ----
+function openModal(id) {
+  editingId=id;modalImg=null;
+  document.getElementById('mo-title').textContent=id?'Modifier le plan':'Nouveau plan';
+  const s=id?shots.find(x=>x.id===id):null;
+  document.getElementById('f-desc').value=s?.desc||'';
+  document.getElementById('f-tags2').value=s?.tags||'A-Roll';
+  document.getElementById('f-shot2').value=s?.shot||'';
+  document.getElementById('f-fps2').value=s?.fps||'25';
+  document.getElementById('f-dur2').value=s?.dur||'';
+  document.getElementById('f-chars2').value=s?.chars||'';
+  document.getElementById('f-loc2').value=s?.loc||'';
+  document.getElementById('f-notes2').value=s?.notes||'';
+  modalImg=s?.img||null;
+  const area=document.getElementById('mo-img');
+  area.innerHTML=modalImg?'<img src="'+modalImg+'"><input type="file" accept="image/*" onchange="handleModalImg(event)">':'<span class="mo-img-ph">+ Ajouter une image</span><input type="file" accept="image/*" onchange="handleModalImg(event)">';
+  const cf=document.getElementById('mo-custom-fields');
+  cf.innerHTML=customCols.length?'<div class="fgrid">'+customCols.map(c=>{const val=s?.custom?.[c.id]||'';return '<div class="fg"><div class="fl">'+c.name+'</div>'+(c.type==='checkbox'?'<input type="checkbox" id="cf-'+c.id+'" '+(val?'checked':'')+' style="width:auto;margin-top:6px">':'<input class="fi" id="cf-'+c.id+'" value="'+esc(val)+'">')+'</div>';}).join('')+'</div>':'';
+  document.getElementById('mo-edit').classList.add('open');
+}
+
+function closeModal(){document.getElementById('mo-edit').classList.remove('open');editingId=null;modalImg=null;}
+
+function handleModalImg(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>{modalImg=ev.target.result;const area=document.getElementById('mo-img');area.innerHTML='<img src="'+modalImg+'"><input type="file" accept="image/*" onchange="handleModalImg(event)">';};r.readAsDataURL(f);}
+
+async function saveShot() {
+  const custom={};
+  customCols.forEach(c=>{const el=document.getElementById('cf-'+c.id);if(el)custom[c.id]=c.type==='checkbox'?el.checked:el.value;});
+  const data={desc:document.getElementById('f-desc').value,tags:document.getElementById('f-tags2').value,shot:document.getElementById('f-shot2').value,fps:document.getElementById('f-fps2').value,dur:document.getElementById('f-dur2').value,chars:document.getElementById('f-chars2').value,loc:document.getElementById('f-loc2').value,notes:document.getElementById('f-notes2').value,img:modalImg,custom};
+  setSyncStatus('loading','Sauvegarde...');
+  if(editingId){
+    const s=shots.find(x=>x.id===editingId);Object.assign(s,data);
+    closeModal();renderAll();
+    try{if(s.notionId)await notionUpdate(s.notionId,shotToNotionProps(s));setSyncStatus('ok','Sync Notion');}
+    catch(e){setSyncStatus('err','Erreur sync');}
+  } else {
+    const maxSb=shots.reduce((m,x)=>Math.max(m,x.sbOrder),-1);
+    const maxSl=shots.reduce((m,x)=>Math.max(m,x.slOrder),-1);
+    const newShot={id:uid(),sbOrder:maxSb+1,slOrder:maxSl+1,status:'A tourner',notionId:null,...data};
+    shots.push(newShot);
+    closeModal();renderAll();
+    try{const page=await notionCreate(newShot);newShot.notionId=page.id;setSyncStatus('ok','Sync Notion');}
+    catch(e){setSyncStatus('err','Erreur sync');}
+  }
+}
+
+async function deleteShot(id) {
+  const s=shots.find(x=>x.id===id);
+  shots=shots.filter(x=>x.id!==id);renderAll();
+  if(s?.notionId){
+    setSyncStatus('loading','Suppression...');
+    try{await notionDelete(s.notionId);setSyncStatus('ok','Sync Notion');}
+    catch(e){setSyncStatus('err','Erreur sync');}
+  }
+}
+
+// ---- CUSTOM COLS ----
+function openColModal(){renderColList();document.getElementById('mo-cols').classList.add('open');}
+function renderColList(){const list=document.getElementById('cc-list');if(!customCols.length){list.innerHTML='<div style="font-size:12px;color:var(--taupe);padding:8px 0">Aucune colonne personnalisée.</div>';return;}list.innerHTML=customCols.map((c,i)=>`<div class="cc-item"><span>${c.name}</span><span class="cc-type">${c.type==='checkbox'?'Case à cocher':'Texte'}</span><button class="cc-del" onclick="removeCol(${i})">✕</button></div>`).join('');}
+function addCustomCol(){const name=document.getElementById('cc-name').value.trim(),type=document.getElementById('cc-type').value;if(!name)return;customCols.push({id:uid(),name,type});document.getElementById('cc-name').value='';localStorage.setItem('joat-custom-cols',JSON.stringify(customCols));renderColList();}
+function removeCol(i){customCols.splice(i,1);localStorage.setItem('joat-custom-cols',JSON.stringify(customCols));renderColList();}
+
+function updateHeader(){document.getElementById('h-total').textContent=shots.length;document.getElementById('h-done').textContent=shots.filter(s=>s.status==='Tourné').length;const t=shots.reduce((a,s)=>a+(parseFloat(s.dur)||0),0);document.getElementById('h-dur').textContent=t>0?(t>=60?Math.floor(t/60)+'m'+Math.round(t%60)+'s':Math.round(t)+'s'):'—';}
+
+function exportCSV(){const sl=[...shots].sort((a,b)=>a.slOrder-b.slOrder),sb=[...shots].sort((a,b)=>a.sbOrder-b.sbOrder);const fixH=['# Tournage','# Narratif','Description','Tags','Shot','FPS','Durée (s)','Personnages','Lieu','Statut','Commentaires'];const rows=sl.map((s,i)=>{const sbIdx=sb.findIndex(x=>x.id===s.id)+1;const base=[i+1,sbIdx,s.desc,s.tags,s.shot,s.fps,s.dur,s.chars,s.loc,s.status,s.notes];const cust=customCols.map(c=>{const v=s.custom[c.id];return v===true?'Oui':v===false?'':v||'';});return[...base,...cust].map(v=>'"'+String(v||'').replace(/"/g,'""')+'"').join(',');});const csv=[[...fixH,...customCols.map(c=>c.name)].join(','),...rows].join('\n');const a=document.createElement('a');a.href='data:text/csv;charset=utf-8,\uFEFF'+encodeURIComponent(csv);a.download='joat_feast.csv';a.click();}
+
+document.getElementById('mo-edit').addEventListener('click',e=>{if(e.target===document.getElementById('mo-edit'))closeModal();});
+document.getElementById('mo-cols').addEventListener('click',e=>{if(e.target===document.getElementById('mo-cols')){document.getElementById('mo-cols').classList.remove('open');renderAll();}});
+
+loadFromNotion();
+</script>
+</body>
+</html>
